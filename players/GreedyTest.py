@@ -1,0 +1,344 @@
+#####################################################################################################################################################
+######################################################################## INFO #######################################################################
+#####################################################################################################################################################
+
+"""
+    This file contains useful elements to define a particular player.
+    In order to use this player, you need to instanciate it and add it to a game.
+    Please refer to example games to see how to do it properly.
+"""
+
+#####################################################################################################################################################
+###################################################################### IMPORTS ######################################################################
+#####################################################################################################################################################
+
+# External imports
+from typing import *
+from typing_extensions import *
+from numbers import *
+import os, sys
+
+# Add needed directories to the path
+this_directory = os.path.dirname(os.path.realpath(__file__))
+sys.path.append(os.path.join(this_directory, "..", "utils"))
+
+# PyRat imports
+from pyrat import Player, Maze, GameState, Action, Graph
+from pyrat import Player, Maze, GameState, Action, Graph
+from MinHeap import MinHeap 
+#####################################################################################################################################################
+###################################################################### CLASSES ######################################################################
+#####################################################################################################################################################
+
+class GreedyTest (Player):
+
+    """
+        This player is basically a player that does nothing except printing the phase of the game.
+        It is meant to be used as a template to create new players.
+        Methods "preprocessing" and "postprocessing" are optional.
+        Method "turn" is mandatory.
+    """
+
+    #############################################################################################################################################
+    #                                                                CONSTRUCTOR                                                                #
+    #############################################################################################################################################
+
+    def __init__ ( self:     Self,
+                   *args:    Any,
+                   **kwargs: Any
+                 ) ->        Self:
+
+        """
+            This function is the constructor of the class.
+            When an object is instantiated, this method is called to initialize the object.
+            This is where you should define the attributes of the object and set their initial values.
+            Arguments *args and **kwargs are used to pass arguments to the parent constructor.
+            This is useful not to declare again all the parent's attributes in the child class.
+            In:
+                * self:   Reference to the current object.
+                * args:   Arguments to pass to the parent constructor.
+                * kwargs: Keyword arguments to pass to the parent constructor.
+            Out:
+                * A new instance of the class.
+        """
+
+        # Inherit from parent class
+        super().__init__(*args, **kwargs)
+
+        # Metagraph used to link the player and all cheeses
+        self.metagraph = []
+
+        # List of routing tables linking the player and all cheeses
+        self.routing_tables = {}
+
+        # List of actions to follow 
+        self.actions = []
+       
+    #############################################################################################################################################
+    #                                                               PYRAT METHODS                                                               #
+    #############################################################################################################################################
+
+    @override
+    def preprocessing ( self:       Self,
+                        maze:       Maze,
+                        game_state: GameState,
+                      ) ->          None:
+        
+        """
+            This method redefines the method of the parent class.
+            It is called once at the beginning of the game.
+            In:
+                * self:       Reference to the current object.
+                * maze:       An object representing the maze in which the player plays.
+                * game_state: An object representing the state of the game.
+            Out:
+                * None.
+        """
+        # On récupère la position initiale du joueur ainsi que celle du fromage
+        player_pos = game_state.player_locations[self.name]
+        cheese_pos = game_state.cheese
+
+        # On récupère la routing_table à l'aide de la method traversal (le dict des distances ne nous intéresse pas)
+        #_, routing_table = self.traversal(maze, player_pos)
+        #route = self.find_route(routing_table, player_pos, cheese_pos)
+
+        # Test
+        self.metagraph, self.routing_tables = self.get_metagraph(maze, player_pos, cheese_pos)
+        target = self.greedy(self.metagraph, player_pos)
+        # On enregistre les actions à effectuer aux prochains tours
+        self.actions = maze.locations_to_actions(self.find_route(self.routing_tables[player_pos], player_pos, target))
+
+
+    #############################################################################################################################################
+
+    @override
+    def turn ( self:       Self,
+               maze:       Maze,
+               game_state: GameState,
+             ) ->          Action:
+
+        """
+            This method redefines the abstract method of the parent class.
+            It is called at each turn of the game.
+            It returns an action to perform among the possible actions, defined in the Action enumeration.
+            In:
+                * self:       Reference to the current object.
+                * maze:       An object representing the maze in which the player plays.
+                * game_state: An object representing the state of the game.
+            Out:
+                * action: One of the possible actions.
+        """
+
+        # Return a predefined action
+        if len(self.actions) != 0:
+            return self.actions.pop(0)
+        elif len(game_state.cheese) != 0:
+            player_pos = game_state.player_locations[self.name]
+            cheese_pos = game_state.cheese
+            self.metagraph, routing_table = self.update_metagraph(self.metagraph, maze, player_pos, cheese_pos)
+            # On n'enlève pas les anciens points parceque
+            self.routing_tables[player_pos] = routing_table
+            target = self.greedy(self.metagraph, player_pos)
+            # On enregistre les actions à effectuer aux prochains tours
+            self.actions = maze.locations_to_actions(self.find_route(self.routing_tables[player_pos], player_pos, target))
+            return self.actions.pop(0)
+        
+        return Action.NOTHING
+
+#############################################################################################################################################
+
+    @override
+    def postprocessing ( self:       Self,
+                         maze:       Maze,
+                         game_state: GameState,
+                         stats:      Dict[str, Any],
+                       ) ->          None:
+
+        """
+            This method redefines the method of the parent class.
+            It is called once at the end of the game.
+            In:
+                * self:       Reference to the current object.
+                * maze:       An object representing the maze in which the player plays.
+                * game_state: An object representing the state of the game.
+                * stats:      Statistics about the game.
+            Out:
+                * None.
+        """
+
+        # Print phase of the game
+
+#####################################################################################################################################################
+#####################################################################################################################################################
+    def get_metagraph( self: Self,
+                      graph: Graph,
+                      source: Integral,
+                      cheeses: List[Integral]):
+        """
+            Calcul le metagraph entre la source et tous les fromages du circuit,
+            renvoie le metagraph et une liste de routing_table
+        """
+        metaGraph = Graph()
+        routing_tables = {}
+
+        vertices = [source] + cheeses
+
+        for vertex in vertices: 
+            metaGraph.add_vertex(vertex)
+        
+        for i in range(len(vertices)):
+            distances, routing_table = self.traversal(graph, vertices[i], vertices[i+1:])
+            routing_tables[vertices[i]] = routing_table
+            for j in range(1, len(vertices)-i):
+                metaGraph.add_edge(vertices[i], vertices[i+j], distances[vertices[i+j]])
+                metaGraph.add_edge(vertices[i+j], vertices[i], distances[vertices[i+j]])
+
+        return metaGraph, routing_tables        
+    
+    def update_metagraph(self: Self,
+                      metaGraph: Graph,
+                      graph: Graph,
+                      source: Integral,
+                      cheeses: List[Integral]):
+        """
+        """
+        for vertex in metaGraph.vertices:
+            if vertex not in cheeses:
+                metaGraph.remove_vertex(vertex)
+
+        distances, routing_table = self.traversal(graph, source, cheeses)
+        metaGraph.add_vertex(source)
+
+        for i in range(len(cheeses)):
+            metaGraph.add_edge(source, cheeses[i], distances[cheeses[i]])
+            metaGraph.add_edge(cheeses[i], source, distances[cheeses[i]])
+        
+        return metaGraph, routing_table
+
+    def greedy( self: Self,
+                graph: Graph, 
+                source: Integral):
+        """
+
+
+
+        SET RETURN TYPE
+
+
+
+        """
+        best_length = float("inf")
+        best_path = []
+        def greedy_aux(source, path, depth, weight):
+            nonlocal best_length, best_path
+            path.append(source)
+            if weight >= best_length:
+                return 
+            
+            if depth == 0:
+                if weight < best_length:
+                    best_path = path
+                    best_length = weight
+                    return
+
+            for neighbor in graph.get_neighbors(source):
+                greedy_aux(neighbor, path[:], depth-1, weight + graph.get_weight(source, neighbor))
+        
+        greedy_aux(source, [], 6, 0)
+        return best_path[1]
+    
+    def traversal( self:   Self,
+                    graph:  Graph,
+                    source: Integral,
+                    cheeses: List[Integral]):
+        """
+            Implémentation de dijkstra, ne s'arrête pas lorsque le fromage est trouvé pour faciliter les tests.
+            In:
+                * self:   Reference to the current object.
+                * graph:  The graph to traverse.
+                * source: The source vertex of the traversal.
+                * cheeses: List of all cheeses to find
+            Out:
+                * distances:     The distances from the source to each explored vertex.
+                * routing_table: The routing table, that is, the parent of each vertex in the traversal (None for the source).
+        """
+        # If no cheeses to find return empty dict
+        if len(cheeses) == 0:
+            return {}, {}
+        
+        # initialize 
+        min_heap = MinHeap()
+        routing_table = {}
+        explored_vertices = {}    # On peut se passer de ce dictionnaire si on ne veut que trouver le chemin
+        min_heap.add_or_replace(source, (0, None))
+        nmb_cheese = 0
+
+        # algorithm loop
+        while len(min_heap.elements) != 0:
+            # On récupère le prochain élement de la min_heap et on l'ajoute à nos différents dict.
+            current_vertex, (distance, parent) = min_heap.remove()
+            explored_vertices[current_vertex] = distance
+            routing_table[current_vertex] = parent
+            
+            # Si on est arrivé au fromage on arrête la recherche
+            if current_vertex in cheeses:
+                nmb_cheese += 1
+                if nmb_cheese == len(cheeses):
+                    break
+
+            # On itère sur tous les voisins du nouveau point
+            neighbors = graph.get_neighbors(current_vertex)
+            for neighbor in neighbors:
+                if neighbor not in routing_table:
+                    distance_next = distance + graph.get_weight(current_vertex,neighbor)
+                    min_heap.add_or_replace(neighbor, (distance_next, current_vertex))
+
+        return explored_vertices, routing_table 
+    
+
+    def find_route ( self:          Self,
+                    routing_table: Dict[Integral, Optional[Integral]],
+                    source:        Integral,
+                    target:        Integral
+                ) ->             List[Integral]:
+
+        """
+            This method finds the route from the source to the target using the routing table.
+            In:
+                * self:          Reference to the current object.
+                * routing_table: The routing table.
+                * source:        The source vertex.
+                * target:        The target vertex.
+            Out:
+                * route: The route from the source to the target.
+        """
+        route = [target]
+        # On remonte le chemin depuis la cible jusqu'a retomber sur la source
+        while route[-1] != source:
+            route.append(routing_table[route[-1]])
+
+        # On renvoie la liste inversée pour plus facilement utiliser locations_to_actions par la suite
+        route.reverse()
+        return route
+    
+
+    def find_routes(self, routing_tables, points):
+        """
+            Return a route from a lis of routing_tables and an order set of points to follow
+            In:
+                * self:          Reference to the current object.
+                * routing_tables:The routing tables associated to the differents points.
+                * points:        The order list of points.
+            Out:
+                * route: The route from the source to the target.
+        """
+        route = [points[0]]
+        for i in range(len(points)-1):
+            if points[i+1] in routing_tables[points[i]]:
+                sub_route = self.find_route(routing_tables[points[i]], points[i], points[i+1])
+            else:
+                sub_route = self.find_route(routing_tables[points[i+1]], points[i+1], points[i])
+                sub_route.reverse()
+            route += sub_route[1:]
+        
+        return route
