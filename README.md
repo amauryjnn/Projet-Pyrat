@@ -1,93 +1,176 @@
-# pyrat_git_workspace
+# 🐀 Projet PyRat
 
+Projet d'informatique du semestre 5 (FISE 1A, IMT Atlantique) : programmer en Python un rat qui évolue dans un labyrinthe pour attraper des morceaux de fromage, en s'appuyant sur la théorie des graphes et des algorithmes classiques.
 
+🏆 **Notre programme de compétition a terminé 5ᵉ du tournoi PyRat.**
 
-## Getting started
+Réalisé en trinôme par **Amaury JANIN**, **CREPIN** et **SARETE**.
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+> Énoncé et séances du projet : <https://hub.imt-atlantique.fr/ueinfo-fise1a/s5/project/index.html>
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+---
 
-## Add your files
+## Sommaire
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
+- [Le jeu](#le-jeu)
+- [Ce que contient le dépôt](#ce-que-contient-le-dépôt)
+- [Les joueurs](#les-joueurs)
+- [Le joueur de compétition](#le-joueur-de-compétition)
+- [Installation](#installation)
+- [Utilisation](#utilisation)
+- [Tests](#tests)
+- [Tournoi](#tournoi)
+- [Organisation de l'équipe](#organisation-de-léquipe)
+- [Utilisation de l'IA générative](#utilisation-de-lia-générative)
+
+---
+
+## Le jeu
+
+[PyRat](https://hub.imt-atlantique.fr/ueinfo-fise1a/s5/project/index.html) est un jeu à un ou plusieurs joueurs. Le labyrinthe est un **graphe** : les cases sont les sommets, les passages sont les arêtes. Les cases de **boue** sont des arêtes pondérées : elles demandent plusieurs tours pour être traversées. Le but est de ramasser le plus de fromage possible, et en un minimum de tours.
+
+Le projet est découpé en séances, chacune ajoutant une difficulté :
+
+| Séance | Problème | Algorithmes |
+|---|---|---|
+| 1 | Découverte, premiers joueurs aléatoires | Marches aléatoires (`Random1` à `Random5`) |
+| 2 | Attraper **1 fromage** | Parcours en largeur (BFS) et en profondeur (DFS) |
+| 3 | Attraper **1 fromage** avec de la boue | Dijkstra (avec un tas-min maison) |
+| 4 | Attraper **N fromages** | Voyageur de commerce (TSP) par recherche exhaustive |
+| 5 | Attraper N fromages **plus vite** | Algorithmes gloutons et heuristiques |
+| 6 | **Défier un adversaire** | Stratégie contre un adversaire (théorie des jeux) |
+
+## Ce que contient le dépôt
 
 ```
-cd existing_repo
-git remote add origin https://gitlab.imt-atlantique.fr/projet_pyrat_59/pyrat_git_workspace.git
-git branch -M main
-git push -uf origin main
+.
+├── players/   Les joueurs (une classe par fichier, héritant de pyrat.Player)
+├── utils/     Briques réutilisables : MinHeap, Traversal, BFSTraversal, DFSTraversal
+├── games/     Notebooks qui lancent des parties, visualisent et comparent les joueurs
+├── test/      Tests unitaires (unittest, dans des notebooks)
+├── doc/       Documentation de la bibliothèque PyRat (HTML, générée avec pdoc)
+└── *.zip      Archives des livrables 1 et 2 rendus pendant le semestre
 ```
 
-## Integrate with your tools
+## Les joueurs
 
-- [ ] [Set up project integrations](https://gitlab.imt-atlantique.fr/projet_pyrat_59/pyrat_git_workspace/-/settings/integrations)
+Tous les joueurs sont dans [players/](players/) et héritent de `pyrat.Player` (méthodes `preprocessing`, `turn`, `postprocessing`).
 
-## Collaborate with your team
+| Joueur | Description |
+|---|---|
+| `Random1` … `Random5` | Marches aléatoires de plus en plus malignes : mouvement au hasard, évitement des murs, préférence pour les cases non visitées, etc. |
+| `BFS`, `DFS`, `DFS_recursive` | Un seul fromage : le chemin est calculé dans `preprocessing` par un parcours en largeur ou en profondeur (version récursive de DFS incluse). |
+| `TraversalPlayer` | Joueur générique qui utilise au choix [BFSTraversal](utils/BFSTraversal.py) ou [DFSTraversal](utils/DFSTraversal.py). |
+| `Dijkstra` | Un seul fromage, plus court chemin pondéré (gère la boue) grâce au [MinHeap](utils/MinHeap.py) implémenté sans `heapq`. |
+| `Exhaustive` | N fromages : construit un **métagraphe** (joueur + fromages, arêtes = plus courts chemins) puis résout le TSP par recherche exhaustive avec élagage. Optimal mais en temps factoriel. |
+| `Greedy` | N fromages : même métagraphe, mais visite toujours le fromage le plus proche. Ordre calculé une seule fois. |
+| `GreedyEachCheese` | Comme `Greedy`, mais le métagraphe est recalculé à chaque fromage atteint. |
+| `GreedyEachTurn` | Comme `GreedyEachCheese`, mais la cible est réévaluée dès que le fromage visé disparaît (par exemple mangé par l'adversaire). |
+| `GreedyTest` | Variante expérimentale : glouton avec anticipation sur quelques pas. |
+| `CompetPlayer` | Notre joueur de compétition (voir ci-dessous). |
+| `TemplatePlayer` | Modèle fourni pour écrire un nouveau joueur. |
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+**Complexités** (V sommets, E arêtes du labyrinthe, N fromages) : la traversée de Dijkstra coûte O((V+E) log V), la reconstruction d'un chemin O(V), et le choix glouton O(N). L'exhaustif explore jusqu'à N! ordres de visite, d'où le besoin de méthodes gloutonnes pour les grandes parties.
 
-## Test and Deploy
+**Résultat de la comparaison Exhaustif / Glouton** ([games/compare_exhaustive_greedy.ipynb](games/compare_exhaustive_greedy.ipynb)) : le glouton demande un peu plus de tours que l'exhaustif, mais il est beaucoup plus rapide à calculer.
 
-Use the built-in continuous integration in GitLab.
+## Le joueur de compétition
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+[CompetPlayer](players/CompetPlayer.py) est prévu pour les paramètres du tournoi : un labyrinthe 25×20 avec 41 fromages, de la boue, 3 s de prétraitement et 0,1 s par tour. L'exhaustif y est inutilisable, et seul un algorithme rapide tient dans le budget de temps.
 
-***
+Principe :
 
-# Editing this README
-
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
-
-## Suggestions for a good README
-
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
-
-## Name
-Choose a self-explaining name for your project.
-
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
-
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
-
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+1. **Métagraphe** : on relie le rat et tous les fromages par leurs plus courts chemins (Dijkstra, arrêté dès que tous les fromages sont trouvés).
+2. **Glouton** : on vise le fromage le plus proche et on mémorise la suite d'actions à suivre.
+3. **Mise à jour** : quand la cible disparaît ou est atteinte, on retire les fromages disparus du métagraphe, on recalcule les distances depuis la position courante et on choisit une nouvelle cible.
+4. **Zones de fromage** (`get_zones`) : un BFS borné regroupe les fromages proches en zones et compte les fromages par zone. Cette partie est calculée en `preprocessing` et visualisée dans [games/visualize_CompetPlayer.ipynb](games/visualize_CompetPlayer.ipynb), mais elle n'est pas encore utilisée pour choisir la route : c'est la piste d'amélioration principale (visiter zone par zone plutôt que fromage par fromage).
 
 ## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+Prérequis : Python ≥ 3.12 (les fichiers compilés présents ont été générés avec 3.12) et la bibliothèque **PyRat**, installée comme indiqué à la [séance 1](https://hub.imt-atlantique.fr/ueinfo-fise1a/s5/project/session1/index.html) du cours. La documentation de PyRat est aussi disponible hors-ligne dans [doc/index.html](doc/index.html).
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+```bash
+git clone https://github.com/amauryjnn/Projet-Pyrat.git
+cd Projet-Pyrat
+```
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+Dépendances Python utilisées par le code et les notebooks, en plus de PyRat :
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+```bash
+pip install jupyter numpy matplotlib networkx scikit-learn
+```
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+`networkx` et `scikit-learn` ne servent qu'à des imports de type dans quelques joueurs (par exemple `CompetPlayer`), mais ils doivent être présents pour que ces fichiers s'importent.
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+## Utilisation
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+Les notebooks utilisent des chemins relatifs : il faut les **lancer depuis le dossier `games/`**.
 
-## License
-For open source projects, say how it is licensed.
+```bash
+cd games
+jupyter notebook
+```
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+Notebooks utiles :
+
+| Notebook | Rôle |
+|---|---|
+| `tutorial.ipynb`, `sample_game.ipynb` | Prise en main de PyRat |
+| `visualize_<Joueur>.ipynb` | Lance une partie avec le joueur indiqué et l'affiche |
+| `compare_all_randoms.ipynb` | Compare les cinq joueurs aléatoires |
+| `compare_exhaustive_greedy.ipynb` | Compare vitesse et nombre de tours des joueurs exhaustif et glouton |
+| `match_Greedy_GreedyEachTurn.ipynb` | Match en face à face entre variantes gloutonnes |
+| `tournament.ipynb` | Script de tournoi fourni (poules puis phase finale) |
+
+Exemple minimal, tiré de `visualize_CompetPlayer.ipynb` :
+
+```python
+import sys, os
+sys.path.append(os.path.join("..", "players"))
+
+from pyrat import Game, GameMode
+from CompetPlayer import CompetPlayer
+
+game = Game(maze_width=25, maze_height=20, cell_percentage=80, wall_percentage=60,
+            mud_percentage=20.0, mud_range=[4, 9], nb_cheese=41,
+            preprocessing_time=3.0, turn_time=0.1, random_seed=42,
+            game_mode=GameMode.SEQUENTIAL)
+game.add_player(CompetPlayer())
+stats = game.start()
+```
+
+## Tests
+
+Les tests unitaires utilisent `unittest` et sont écrits dans des notebooks du dossier [test/](test/). Chaque notebook se lance depuis `test/` (**Run All**) et se termine par `unittest.main(...)`.
+
+| Notebook | Teste |
+|---|---|
+| `tests_MinHeap.ipynb` | Ajout, retrait, remplacement et clés de types variés |
+| `tests_BFS.ipynb`, `tests_DFS.ipynb` | Parcours (`traversal`) et reconstruction de route (`find_route`) |
+| `tests_Dijkstra.ipynb` | Idem, avec un graphe pondéré à cycles fait main |
+| `tests_Exhaustive.ipynb` | `traversal` et `find_route` du joueur exhaustif (le TSP lui-même n'est pas testé) |
+| `tests_Greedy.ipynb`, `tests_GreedyEachCheese.ipynb` | `find_route`, `get_metagraph`, `greedy` |
+| `tests_GreedyEachTurn.ipynb` | Idem, plus le cas où un fromage est mangé avant d'être atteint |
+
+## Tournoi
+
+Le tournoi PyRat est facultatif. Les parties se jouent sur un labyrinthe 25×20 (80 % de cases ouvertes, 60 % de murs, 20 % de boue de 4 à 9 tours, 41 fromages), avec 3 s de prétraitement et 0,1 s par tour. Nous avons présenté `CompetPlayer` et terminé à la **5ᵉ place**.
+
+## Organisation de l'équipe
+
+Les rôles tournent à chaque livrable, avec un responsable du code, un de la documentation et un des tests unitaires :
+
+| Livrable | Code | Documentation | Tests |
+|---|---|---|---|
+| Livrable 1 (un fromage) | CREPIN | JANIN | SARETE |
+| Livrable 2 (plusieurs fromages) | SARETE | CREPIN | JANIN |
+
+Les archives [JANIN_CREPIN_SARETE_1.zip](JANIN_CREPIN_SARETE_1.zip) (livrable 1) et [JANIN_CREPIN_SARETE.zip](JANIN_CREPIN_SARETE.zip) (livrable 2) contiennent les rendus tels que remis, avec leurs README d'époque.
+
+## Utilisation de l'IA générative
+
+<!-- À COMPLÉTER PAR L'ÉQUIPE : le cours demande de déclarer les outils d'IA utilisés et les parties concernées. -->
+
+---
+
+*Projet réalisé dans le cadre de l'UE Informatique, FISE 1A, IMT Atlantique.*
