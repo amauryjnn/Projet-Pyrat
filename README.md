@@ -1,128 +1,128 @@
-# 🐀 Projet PyRat
+# 🐀 PyRat Project
 
-Projet d'informatique du semestre 5 (FISE 1A, IMT Atlantique) : programmer en Python un rat qui évolue dans un labyrinthe pour attraper des morceaux de fromage, en s'appuyant sur la théorie des graphes et des algorithmes classiques.
+Computer science project of semester 5 (FISE 1A, IMT Atlantique): programming, in Python, a rat that moves through a maze to catch pieces of cheese, using graph theory and classic algorithms.
 
-🏆 **Notre programme de compétition a terminé 5ᵉ du tournoi PyRat.**
+🏆 **Our competition player finished 5th in the PyRat tournament.**
 
-Réalisé en trinôme par **Amaury JANIN**, **CREPIN** et **SARETE**.
+Built by a team of three: **Amaury JANIN**, **CREPIN** and **SARETE**.
 
-> Énoncé et séances du projet : <https://hub.imt-atlantique.fr/ueinfo-fise1a/s5/project/index.html>
+> Project description and sessions: <https://hub.imt-atlantique.fr/ueinfo-fise1a/s5/project/index.html>
 
 ---
 
-## Sommaire
+## Table of contents
 
-- [Le jeu](#le-jeu)
-- [Ce que contient le dépôt](#ce-que-contient-le-dépôt)
-- [Les joueurs](#les-joueurs)
-- [Le joueur de compétition](#le-joueur-de-compétition)
+- [The game](#the-game)
+- [Repository content](#repository-content)
+- [The players](#the-players)
+- [The competition player](#the-competition-player)
 - [Installation](#installation)
-- [Utilisation](#utilisation)
+- [Usage](#usage)
 - [Tests](#tests)
-- [Tournoi](#tournoi)
-- [Organisation de l'équipe](#organisation-de-léquipe)
-- [Utilisation de l'IA générative](#utilisation-de-lia-générative)
+- [Tournament](#tournament)
+- [Team organization](#team-organization)
+- [Use of generative AI](#use-of-generative-ai)
 
 ---
 
-## Le jeu
+## The game
 
-[PyRat](https://hub.imt-atlantique.fr/ueinfo-fise1a/s5/project/index.html) est un jeu à un ou plusieurs joueurs. Le labyrinthe est un **graphe** : les cases sont les sommets, les passages sont les arêtes. Les cases de **boue** sont des arêtes pondérées : elles demandent plusieurs tours pour être traversées. Le but est de ramasser le plus de fromage possible, et en un minimum de tours.
+[PyRat](https://hub.imt-atlantique.fr/ueinfo-fise1a/s5/project/index.html) is a game for one or several players. The maze is a **graph**: cells are vertices and passages are edges. **Mud** cells are weighted edges: they take several turns to cross. The goal is to collect as much cheese as possible, in as few turns as possible.
 
-Le projet est découpé en séances, chacune ajoutant une difficulté :
+The project is split into sessions, each one adding a difficulty:
 
-| Séance | Problème | Algorithmes |
+| Session | Problem | Algorithms |
 |---|---|---|
-| 1 | Découverte, premiers joueurs aléatoires | Marches aléatoires (`Random1` à `Random5`) |
-| 2 | Attraper **1 fromage** | Parcours en largeur (BFS) et en profondeur (DFS) |
-| 3 | Attraper **1 fromage** avec de la boue | Dijkstra (avec un tas-min maison) |
-| 4 | Attraper **N fromages** | Voyageur de commerce (TSP) par recherche exhaustive |
-| 5 | Attraper N fromages **plus vite** | Algorithmes gloutons et heuristiques |
-| 6 | **Défier un adversaire** | Stratégie contre un adversaire (théorie des jeux) |
+| 1 | Discovery, first random players | Random walks (`Random1` to `Random5`) |
+| 2 | Catch **1 piece of cheese** | Breadth-first search (BFS) and depth-first search (DFS) |
+| 3 | Catch **1 piece of cheese** with mud | Dijkstra (with a custom min-heap) |
+| 4 | Catch **N pieces of cheese** | Traveling salesman problem (TSP) by exhaustive search |
+| 5 | Catch N pieces of cheese **faster** | Greedy algorithms and heuristics |
+| 6 | **Challenge an opponent** | Strategy against an opponent (game theory) |
 
-## Ce que contient le dépôt
+## Repository content
 
 ```
 .
-├── players/   Les joueurs (une classe par fichier, héritant de pyrat.Player)
-├── utils/     Briques réutilisables : MinHeap, Traversal, BFSTraversal, DFSTraversal
-├── games/     Notebooks qui lancent des parties, visualisent et comparent les joueurs
-├── test/      Tests unitaires (unittest, dans des notebooks)
-├── doc/       Documentation de la bibliothèque PyRat (HTML, générée avec pdoc)
-└── *.zip      Archives des livrables 1 et 2 rendus pendant le semestre
+├── players/   The players (one class per file, inheriting from pyrat.Player)
+├── utils/     Reusable building blocks: MinHeap, Traversal, BFSTraversal, DFSTraversal
+├── games/     Notebooks that run games and visualize and compare the players
+├── test/      Unit tests (unittest, written in notebooks)
+├── doc/       Documentation of the PyRat library (HTML, generated with pdoc)
+└── *.zip      Archives of deliverables 1 and 2 handed in during the semester
 ```
 
-## Les joueurs
+## The players
 
-Tous les joueurs sont dans [players/](players/) et héritent de `pyrat.Player` (méthodes `preprocessing`, `turn`, `postprocessing`).
+All players are in [players/](players/) and inherit from `pyrat.Player` (methods `preprocessing`, `turn`, `postprocessing`).
 
-| Joueur | Description |
+| Player | Description |
 |---|---|
-| `Random1` … `Random5` | Marches aléatoires de plus en plus malignes : mouvement au hasard, évitement des murs, préférence pour les cases non visitées, etc. |
-| `BFS`, `DFS`, `DFS_recursive` | Un seul fromage : le chemin est calculé dans `preprocessing` par un parcours en largeur ou en profondeur (version récursive de DFS incluse). |
-| `TraversalPlayer` | Joueur générique qui utilise au choix [BFSTraversal](utils/BFSTraversal.py) ou [DFSTraversal](utils/DFSTraversal.py). |
-| `Dijkstra` | Un seul fromage, plus court chemin pondéré (gère la boue) grâce au [MinHeap](utils/MinHeap.py) implémenté sans `heapq`. |
-| `Exhaustive` | N fromages : construit un **métagraphe** (joueur + fromages, arêtes = plus courts chemins) puis résout le TSP par recherche exhaustive avec élagage. Optimal mais en temps factoriel. |
-| `Greedy` | N fromages : même métagraphe, mais visite toujours le fromage le plus proche. Ordre calculé une seule fois. |
-| `GreedyEachCheese` | Comme `Greedy`, mais le métagraphe est recalculé à chaque fromage atteint. |
-| `GreedyEachTurn` | Comme `GreedyEachCheese`, mais la cible est réévaluée dès que le fromage visé disparaît (par exemple mangé par l'adversaire). |
-| `GreedyTest` | Variante expérimentale : glouton avec anticipation sur quelques pas. |
-| `CompetPlayer` | Notre joueur de compétition (voir ci-dessous). |
-| `TemplatePlayer` | Modèle fourni pour écrire un nouveau joueur. |
+| `Random1` … `Random5` | Increasingly clever random walks: random moves, wall avoidance, preference for unvisited cells, etc. |
+| `BFS`, `DFS`, `DFS_recursive` | Single cheese: the path is computed in `preprocessing` by a breadth-first or depth-first search (a recursive DFS version is included). |
+| `TraversalPlayer` | Generic player that uses either [BFSTraversal](utils/BFSTraversal.py) or [DFSTraversal](utils/DFSTraversal.py). |
+| `Dijkstra` | Single cheese, weighted shortest path (handles mud) using the [MinHeap](utils/MinHeap.py), implemented without `heapq`. |
+| `Exhaustive` | N cheeses: builds a **metagraph** (player + cheeses, edges = shortest paths), then solves the TSP by exhaustive search with pruning. Optimal, but factorial running time. |
+| `Greedy` | N cheeses: same metagraph, but always visits the nearest cheese. The visiting order is computed only once. |
+| `GreedyEachCheese` | Like `Greedy`, but the metagraph is recomputed each time a cheese is reached. |
+| `GreedyEachTurn` | Like `GreedyEachCheese`, but the target is re-evaluated as soon as the targeted cheese disappears (for example, eaten by the opponent). |
+| `GreedyTest` | Experimental variant: greedy with a few steps of look-ahead. |
+| `CompetPlayer` | Our competition player (see below). |
+| `TemplatePlayer` | Provided template to write a new player. |
 
-**Complexités** (V sommets, E arêtes du labyrinthe, N fromages) : la traversée de Dijkstra coûte O((V+E) log V), la reconstruction d'un chemin O(V), et le choix glouton O(N). L'exhaustif explore jusqu'à N! ordres de visite, d'où le besoin de méthodes gloutonnes pour les grandes parties.
+**Complexities** (V vertices and E edges in the maze, N cheeses): a Dijkstra traversal costs O((V+E) log V), rebuilding a path costs O(V), and the greedy choice costs O(N). The exhaustive player explores up to N! visiting orders, hence the need for greedy methods on large games.
 
-**Résultat de la comparaison Exhaustif / Glouton** ([games/compare_exhaustive_greedy.ipynb](games/compare_exhaustive_greedy.ipynb)) : le glouton demande un peu plus de tours que l'exhaustif, mais il est beaucoup plus rapide à calculer.
+**Exhaustive vs. greedy comparison** ([games/compare_exhaustive_greedy.ipynb](games/compare_exhaustive_greedy.ipynb)): the greedy player needs slightly more turns than the exhaustive one, but it is much faster to compute.
 
-## Le joueur de compétition
+## The competition player
 
-[CompetPlayer](players/CompetPlayer.py) est prévu pour les paramètres du tournoi : un labyrinthe 25×20 avec 41 fromages, de la boue, 3 s de prétraitement et 0,1 s par tour. L'exhaustif y est inutilisable, et seul un algorithme rapide tient dans le budget de temps.
+[CompetPlayer](players/CompetPlayer.py) is designed for the tournament settings: a 25×20 maze with 41 pieces of cheese, mud, 3 s of preprocessing and 0.1 s per turn. The exhaustive player is unusable there, and only a fast algorithm fits in the time budget.
 
-Principe :
+How it works:
 
-1. **Métagraphe** : on relie le rat et tous les fromages par leurs plus courts chemins (Dijkstra, arrêté dès que tous les fromages sont trouvés).
-2. **Glouton** : on vise le fromage le plus proche et on mémorise la suite d'actions à suivre.
-3. **Mise à jour** : quand la cible disparaît ou est atteinte, on retire les fromages disparus du métagraphe, on recalcule les distances depuis la position courante et on choisit une nouvelle cible.
-4. **Zones de fromage** (`get_zones`) : un BFS borné regroupe les fromages proches en zones et compte les fromages par zone. Cette partie est calculée en `preprocessing` et visualisée dans [games/visualize_CompetPlayer.ipynb](games/visualize_CompetPlayer.ipynb), mais elle n'est pas encore utilisée pour choisir la route : c'est la piste d'amélioration principale (visiter zone par zone plutôt que fromage par fromage).
+1. **Metagraph**: the rat and all the cheeses are linked by their shortest paths (Dijkstra, stopped as soon as all cheeses are found).
+2. **Greedy**: it heads for the nearest cheese and stores the sequence of actions to follow.
+3. **Update**: when the target disappears or is reached, vanished cheeses are removed from the metagraph, distances from the current position are recomputed, and a new target is chosen.
+4. **Cheese zones** (`get_zones`): a depth-limited BFS groups nearby cheeses into zones and counts the cheeses in each zone. This is computed in `preprocessing` and visualized in [games/visualize_CompetPlayer.ipynb](games/visualize_CompetPlayer.ipynb), but it is not yet used to choose the route. It is the main improvement path (visiting zone by zone instead of cheese by cheese).
 
 ## Installation
 
-Prérequis : Python ≥ 3.12 (les fichiers compilés présents ont été générés avec 3.12) et la bibliothèque **PyRat**, installée comme indiqué à la [séance 1](https://hub.imt-atlantique.fr/ueinfo-fise1a/s5/project/session1/index.html) du cours. La documentation de PyRat est aussi disponible hors-ligne dans [doc/index.html](doc/index.html).
+Requirements: Python ≥ 3.12 (the compiled files present were generated with 3.12) and the **PyRat** library, installed as described in [session 1](https://hub.imt-atlantique.fr/ueinfo-fise1a/s5/project/session1/index.html) of the course. The PyRat documentation is also available offline in [doc/index.html](doc/index.html).
 
 ```bash
 git clone https://github.com/amauryjnn/Projet-Pyrat.git
 cd Projet-Pyrat
 ```
 
-Dépendances Python utilisées par le code et les notebooks, en plus de PyRat :
+Python dependencies used by the code and the notebooks, in addition to PyRat:
 
 ```bash
 pip install jupyter numpy matplotlib networkx scikit-learn
 ```
 
-`networkx` et `scikit-learn` ne servent qu'à des imports de type dans quelques joueurs (par exemple `CompetPlayer`), mais ils doivent être présents pour que ces fichiers s'importent.
+`networkx` and `scikit-learn` are only used for type-related imports in a few players (for example `CompetPlayer`), but they must be installed for those files to import.
 
-## Utilisation
+## Usage
 
-Les notebooks utilisent des chemins relatifs : il faut les **lancer depuis le dossier `games/`**.
+The notebooks use relative paths, so they must be **launched from the `games/` folder**.
 
 ```bash
 cd games
 jupyter notebook
 ```
 
-Notebooks utiles :
+Useful notebooks:
 
-| Notebook | Rôle |
+| Notebook | Purpose |
 |---|---|
-| `tutorial.ipynb`, `sample_game.ipynb` | Prise en main de PyRat |
-| `visualize_<Joueur>.ipynb` | Lance une partie avec le joueur indiqué et l'affiche |
-| `compare_all_randoms.ipynb` | Compare les cinq joueurs aléatoires |
-| `compare_exhaustive_greedy.ipynb` | Compare vitesse et nombre de tours des joueurs exhaustif et glouton |
-| `match_Greedy_GreedyEachTurn.ipynb` | Match en face à face entre variantes gloutonnes |
-| `tournament.ipynb` | Script de tournoi fourni (poules puis phase finale) |
+| `tutorial.ipynb`, `sample_game.ipynb` | Getting started with PyRat |
+| `visualize_<Player>.ipynb` | Runs and displays a game with the given player |
+| `compare_all_randoms.ipynb` | Compares the five random players |
+| `compare_exhaustive_greedy.ipynb` | Compares speed and number of turns of the exhaustive and greedy players |
+| `match_Greedy_GreedyEachTurn.ipynb` | Head-to-head match between greedy variants |
+| `tournament.ipynb` | Provided tournament script (pools, then knockout phase) |
 
-Exemple minimal, tiré de `visualize_CompetPlayer.ipynb` :
+Minimal example, taken from `visualize_CompetPlayer.ipynb`:
 
 ```python
 import sys, os
@@ -141,36 +141,36 @@ stats = game.start()
 
 ## Tests
 
-Les tests unitaires utilisent `unittest` et sont écrits dans des notebooks du dossier [test/](test/). Chaque notebook se lance depuis `test/` (**Run All**) et se termine par `unittest.main(...)`.
+Unit tests use `unittest` and are written in notebooks in the [test/](test/) folder. Each notebook is run from `test/` (**Run All**) and ends with `unittest.main(...)`.
 
-| Notebook | Teste |
+| Notebook | Tests |
 |---|---|
-| `tests_MinHeap.ipynb` | Ajout, retrait, remplacement et clés de types variés |
-| `tests_BFS.ipynb`, `tests_DFS.ipynb` | Parcours (`traversal`) et reconstruction de route (`find_route`) |
-| `tests_Dijkstra.ipynb` | Idem, avec un graphe pondéré à cycles fait main |
-| `tests_Exhaustive.ipynb` | `traversal` et `find_route` du joueur exhaustif (le TSP lui-même n'est pas testé) |
+| `tests_MinHeap.ipynb` | Adding, removing, replacing, and keys of various types |
+| `tests_BFS.ipynb`, `tests_DFS.ipynb` | Traversal (`traversal`) and route reconstruction (`find_route`) |
+| `tests_Dijkstra.ipynb` | Same, with a hand-made weighted graph with cycles |
+| `tests_Exhaustive.ipynb` | `traversal` and `find_route` of the exhaustive player (the TSP itself is not tested) |
 | `tests_Greedy.ipynb`, `tests_GreedyEachCheese.ipynb` | `find_route`, `get_metagraph`, `greedy` |
-| `tests_GreedyEachTurn.ipynb` | Idem, plus le cas où un fromage est mangé avant d'être atteint |
+| `tests_GreedyEachTurn.ipynb` | Same, plus the case where a cheese is eaten before being reached |
 
-## Tournoi
+## Tournament
 
-Le tournoi PyRat est facultatif. Les parties se jouent sur un labyrinthe 25×20 (80 % de cases ouvertes, 60 % de murs, 20 % de boue de 4 à 9 tours, 41 fromages), avec 3 s de prétraitement et 0,1 s par tour. Nous avons présenté `CompetPlayer` et terminé à la **5ᵉ place**.
+The PyRat tournament is optional. Games are played on a 25×20 maze (80% open cells, 60% walls, 20% mud of 4 to 9 turns, 41 pieces of cheese), with 3 s of preprocessing and 0.1 s per turn. We entered `CompetPlayer` and finished in **5th place**.
 
-## Organisation de l'équipe
+## Team organization
 
-Les rôles tournent à chaque livrable, avec un responsable du code, un de la documentation et un des tests unitaires :
+Roles rotate with each deliverable, with one person in charge of the code, one of the documentation, and one of the unit tests:
 
-| Livrable | Code | Documentation | Tests |
+| Deliverable | Code | Documentation | Tests |
 |---|---|---|---|
-| Livrable 1 (un fromage) | CREPIN | JANIN | SARETE |
-| Livrable 2 (plusieurs fromages) | SARETE | CREPIN | JANIN |
+| Deliverable 1 (one cheese) | CREPIN | JANIN | SARETE |
+| Deliverable 2 (several cheeses) | SARETE | CREPIN | JANIN |
 
-Les archives [JANIN_CREPIN_SARETE_1.zip](JANIN_CREPIN_SARETE_1.zip) (livrable 1) et [JANIN_CREPIN_SARETE.zip](JANIN_CREPIN_SARETE.zip) (livrable 2) contiennent les rendus tels que remis, avec leurs README d'époque.
+The archives [JANIN_CREPIN_SARETE_1.zip](JANIN_CREPIN_SARETE_1.zip) (deliverable 1) and [JANIN_CREPIN_SARETE.zip](JANIN_CREPIN_SARETE.zip) (deliverable 2) contain the submissions as handed in, with their original READMEs.
 
-## Utilisation de l'IA générative
+## Use of generative AI
 
-<!-- À COMPLÉTER PAR L'ÉQUIPE : le cours demande de déclarer les outils d'IA utilisés et les parties concernées. -->
+<!-- TO BE COMPLETED BY THE TEAM: the course requires declaring the AI tools used and the parts concerned. -->
 
 ---
 
-*Projet réalisé dans le cadre de l'UE Informatique, FISE 1A, IMT Atlantique.*
+*Project carried out for the Computer Science course unit, FISE 1A, IMT Atlantique.*
